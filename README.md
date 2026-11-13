@@ -18,6 +18,10 @@ Metrics per image × scheme × attack level: bit accuracy, detected (≥ 80% bit
 
 **Sample finding:** all three schemes are defeated by small geometric changes (1° rotation, 5% crop) because the 8×8 block grid desynchronises. This motivates synchronisation templates or learned watermarks as future work.
 
+## Metadata inspector
+
+A second tab reads an image's metadata and reports AI-provenance labels (C2PA Content Credentials, IPTC `DigitalSourceType`, generator tags such as Stable Diffusion / ComfyUI PNG text chunks, EXIF/XMP software) and privacy-sensitive fields (GPS, camera serial, owner). It is read-only. Load an original next to a copy that went through a messaging app or a screenshot to measure which labels survive sharing. C2PA is detected by its manifest labels; signatures are not cryptographically verified.
+
 ## Scope and responsible use
 
 This is a research and teaching tool. It only tests the open schemes implemented in this repo, using a payload it embeds itself. It does not detect or touch third-party or commercial watermarks (SynthID, C2PA, vendor marks), and it never offers attacked images for download. Results are meant to help design more robust provenance, not to defeat it.

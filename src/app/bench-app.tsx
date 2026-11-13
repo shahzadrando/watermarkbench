@@ -8,6 +8,7 @@ import { DETECT_THRESHOLD, Row, runBench, toCsv } from "@/lib/bench";
 import { Img } from "@/lib/img";
 import { syntheticImage } from "@/lib/samples";
 import { SCHEMES } from "@/lib/schemes";
+import Inspector from "./inspector";
 
 type Sample = { name: string; img: Img; url: string };
 const COLORS: Record<string, string> = { lsb: "#d97706", "dct-qim": "#2563eb", "dct-ss": "#059669" };
@@ -47,6 +48,7 @@ export default function BenchApp() {
   const [error, setError] = useState("");
   const [chartAttack, setChartAttack] = useState("jpeg");
   const [skipGeo, setSkipGeo] = useState(true);
+  const [tab, setTab] = useState<"bench" | "inspect">("bench");
   const running = progress !== null && progress[0] < progress[1];
 
   const toggle = (list: string[], set: (v: string[]) => void, id: string) => set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -125,6 +127,17 @@ export default function BenchApp() {
         </p>
         <p className="text-sm text-neutral-500">Research and educational use. Only the open schemes implemented here are tested, and attacked images are never offered for download.</p>
       </header>
+
+      <nav className="flex gap-1 rounded-lg bg-neutral-100 p-1 text-sm dark:bg-neutral-900" role="tablist">
+        {([["bench", "Watermark benchmark"], ["inspect", "Metadata inspector"]] as const).map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+            className={`flex-1 rounded-md px-3 py-2 font-medium transition ${tab === id ? "bg-white shadow-sm dark:bg-neutral-800" : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"}`}>
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "inspect" ? <Inspector /> : (<>
 
       <section className={card}>
         <h2 className="mb-3 text-lg font-medium">1. Images</h2>
@@ -268,6 +281,7 @@ export default function BenchApp() {
           </div>
         </>
       )}
+      </>)}
 
       <footer className="pt-4 text-sm text-neutral-500">
         Open source · MIT · <a className="underline" href="https://github.com/shahzadrando/watermarkbench">GitHub</a>
