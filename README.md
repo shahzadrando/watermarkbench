@@ -2,6 +2,8 @@
 
 An in-browser benchmark for the robustness of invisible image watermarks. Built as a final-year research project.
 
+**Live demo:** https://ai-removal.vercel.app
+
 It embeds a known 32-bit test payload with each watermarking scheme, applies common image edits, and measures whether the payload can still be recovered and how much image quality was lost. Everything runs client-side; no images are uploaded anywhere.
 
 ## What it measures
