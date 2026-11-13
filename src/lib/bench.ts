@@ -1,5 +1,5 @@
 import { Attack } from "./attacks";
-import { Img, bitAccuracy } from "./img";
+import { Img, scoreBits } from "./img";
 import { psnr, ssim } from "./metrics";
 import { Scheme } from "./schemes";
 
@@ -9,12 +9,13 @@ export type Row = {
   attack: string;
   level: number;
   bitAcc: number;
+  inverted: boolean;
   detected: boolean;
-  psnr: number;
-  ssim: number;
+  psnr: number | null;
+  ssim: number | null;
 };
 
-// 26/32 bits correct: a random guess gets there with p < 0.001.
+// 26/32 bits correct (either polarity): a random guess gets there with p < 0.002.
 export const DETECT_THRESHOLD = 0.8;
 
 export async function runBench(
@@ -22,6 +23,7 @@ export async function runBench(
   schemes: Scheme[],
   attacks: Attack[],
   onProgress: (done: number, total: number) => void = () => {},
+  { skipGeometricQuality = true } = {},
 ): Promise<Row[]> {
   const total = images.length * schemes.length * attacks.reduce((n, a) => n + a.levels.length, 0);
   const rows: Row[] = [];
@@ -31,8 +33,13 @@ export async function runBench(
       for (const a of attacks)
         for (const level of a.levels) {
           const attacked = await a.apply(marked, level);
-          const acc = bitAccuracy(s.extract(attacked));
-          rows.push({ image: name, scheme: s.id, attack: a.id, level, bitAcc: acc, detected: acc >= DETECT_THRESHOLD, psnr: psnr(img, attacked), ssim: ssim(img, attacked) });
+          const { bitAcc, inverted } = scoreBits(s.extract(attacked));
+          const skipQuality = skipGeometricQuality && a.geometric;
+          rows.push({
+            image: name, scheme: s.id, attack: a.id, level, bitAcc, inverted, detected: bitAcc >= DETECT_THRESHOLD,
+            psnr: skipQuality ? null : psnr(img, attacked),
+            ssim: skipQuality ? null : ssim(img, attacked),
+          });
           onProgress(rows.length, total);
           await new Promise((r) => setTimeout(r)); // let the UI paint
         }
@@ -40,6 +47,7 @@ export async function runBench(
   return rows;
 }
 
+// null (skipped metric) becomes an empty CSV cell via join.
 export function toCsv(rows: Row[]) {
   const keys = Object.keys(rows[0] ?? {}) as (keyof Row)[];
   return [keys.join(","), ...rows.map((r) => keys.map((k) => (typeof r[k] === "number" ? +(r[k] as number).toFixed(4) : r[k])).join(","))].join("\n");

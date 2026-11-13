@@ -5,6 +5,8 @@ export type Attack = {
   name: string;
   unit: string;
   levels: number[];
+  /** Moves pixels, so pixel-wise PSNR/SSIM against the original stop meaning image quality. */
+  geometric?: boolean;
   apply: (im: Img, level: number) => Img | Promise<Img>;
 };
 
@@ -68,9 +70,9 @@ export const ATTACKS: Attack[] = [
   { id: "none", name: "No attack", unit: "", levels: [0], apply: (im) => im },
   { id: "jpeg", name: "JPEG compression", unit: "quality", levels: [90, 75, 50, 30], apply: jpeg },
   { id: "resize", name: "Downscale + upscale", unit: "scale", levels: [0.75, 0.5, 0.25], apply: (im, s) => resize(resize(im, Math.round(im.width * s), Math.round(im.height * s)), im.width, im.height) },
-  { id: "crop", name: "Center crop + resize", unit: "kept", levels: [0.95, 0.9, 0.75], apply: cropCenter },
+  { id: "crop", name: "Center crop + resize", unit: "kept", levels: [0.95, 0.9, 0.75], geometric: true, apply: cropCenter },
   { id: "blur", name: "Gaussian blur", unit: "σ", levels: [0.5, 1, 2], apply: blur },
   { id: "noise", name: "Gaussian noise", unit: "σ", levels: [5, 10, 20], apply: (im, s) => { const r = rng(42); return map(im, (v) => v + s * gaussian(r)); } },
   { id: "brightness", name: "Brightness", unit: "×", levels: [0.7, 1.15, 1.3], apply: (im, f) => map(im, (v) => v * f) },
-  { id: "rotate", name: "Rotation", unit: "°", levels: [1, 5, 15], apply: rotate },
+  { id: "rotate", name: "Rotation", unit: "°", levels: [1, 5, 15], geometric: true, apply: rotate },
 ];

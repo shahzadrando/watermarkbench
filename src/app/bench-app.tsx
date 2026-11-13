@@ -46,6 +46,7 @@ export default function BenchApp() {
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState("");
   const [chartAttack, setChartAttack] = useState("jpeg");
+  const [skipGeo, setSkipGeo] = useState(true);
   const running = progress !== null && progress[0] < progress[1];
 
   const toggle = (list: string[], set: (v: string[]) => void, id: string) => set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -72,7 +73,7 @@ export default function BenchApp() {
     setRows([]);
     setError("");
     try {
-      const res = await runBench(samples, SCHEMES.filter((s) => schemes.includes(s.id)), ATTACKS.filter((a) => attacks.includes(a.id)), (d, t) => setProgress([d, t]));
+      const res = await runBench(samples, SCHEMES.filter((s) => schemes.includes(s.id)), ATTACKS.filter((a) => attacks.includes(a.id)), (d, t) => setProgress([d, t]), { skipGeometricQuality: skipGeo });
       setRows(res);
       if (!attacks.includes(chartAttack)) setChartAttack(attacks.find((a) => a !== "none") ?? "none");
     } catch (e) {
@@ -98,7 +99,8 @@ export default function BenchApp() {
     }
     return [...m.entries()].map(([k, rs]) => {
       const [scheme, attack, level] = k.split("|");
-      return { scheme, attack, level: +level, detectRate: mean(rs.map((r) => +r.detected)), bitAcc: mean(rs.map((r) => r.bitAcc)), psnr: mean(rs.map((r) => r.psnr)), ssim: mean(rs.map((r) => r.ssim)) };
+      return { scheme, attack, level: +level, detectRate: mean(rs.map((r) => +r.detected)), bitAcc: mean(rs.map((r) => r.bitAcc)), inverted: rs.some((r) => r.detected && r.inverted),
+        psnr: rs[0].psnr === null ? null : mean(rs.map((r) => r.psnr!)), ssim: rs[0].ssim === null ? null : mean(rs.map((r) => r.ssim!)) };
     });
   }, [rows]);
 
@@ -166,6 +168,10 @@ export default function BenchApp() {
             </button>
           ))}
         </div>
+        <label className="mt-4 flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+          <input type="checkbox" checked={skipGeo} onChange={(e) => setSkipGeo(e.target.checked)} />
+          Skip PSNR/SSIM for geometric attacks (crop, rotation): pixels no longer line up, so the numbers don&apos;t reflect quality
+        </label>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <button
             onClick={run}
@@ -193,7 +199,7 @@ export default function BenchApp() {
               <h2 className="text-lg font-medium">Detection rate after each attack</h2>
               <button onClick={downloadCsv} className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:border-neutral-500 dark:border-neutral-700">Export CSV</button>
             </div>
-            <p className="mb-4 text-sm text-neutral-500">Share of images where ≥{DETECT_THRESHOLD * 100}% of the 32 payload bits were recovered. Mean bit accuracy and PSNR (dB, vs. the original) underneath.</p>
+            <p className="mb-4 text-sm text-neutral-500">Share of images where ≥{DETECT_THRESHOLD * 100}% of the 32 payload bits were recovered. Mean bit accuracy and PSNR (dB, vs. the original) underneath. &ldquo;Inverted&rdquo; means the payload came back with every bit flipped, so the watermark is still present.</p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] border-separate border-spacing-1 text-sm">
                 <thead>
@@ -211,7 +217,8 @@ export default function BenchApp() {
                         return (
                           <td key={s.id} className="rounded-md px-2 py-1.5 text-center" style={{ background: `hsl(${c.detectRate * 130} 70% 45% / 0.22)` }}>
                             <div className="font-semibold tabular-nums">{Math.round(c.detectRate * 100)}%</div>
-                            <div className="text-xs tabular-nums text-neutral-500">{(c.bitAcc * 100).toFixed(0)}% bits · {c.psnr.toFixed(1)} dB</div>
+                            <div className="text-xs tabular-nums text-neutral-500">{(c.bitAcc * 100).toFixed(0)}% bits · {c.psnr === null ? "—" : `${c.psnr.toFixed(1)} dB`}</div>
+                            {c.inverted && <div className="text-xs font-medium text-amber-600" title="Recovered with every bit flipped">inverted</div>}
                           </td>
                         );
                       })}
@@ -253,7 +260,7 @@ export default function BenchApp() {
                   <Tooltip cursor={{ strokeDasharray: "3 3" }} formatter={(v, n) => (n === "Bit accuracy" ? `${(Number(v) * 100).toFixed(1)}%` : `${Number(v).toFixed(1)} dB`)} />
                   <Legend />
                   <ReferenceLine y={DETECT_THRESHOLD} strokeDasharray="4 4" />
-                  {usedSchemes.map((s) => <Scatter key={s.id} name={s.name} data={agg.filter((a) => a.scheme === s.id && a.attack !== "none")} fill={COLORS[s.id]} />)}
+                  {usedSchemes.map((s) => <Scatter key={s.id} name={s.name} data={agg.filter((a) => a.scheme === s.id && a.attack !== "none" && a.psnr !== null)} fill={COLORS[s.id]} />)}
                 </ScatterChart>
               </ResponsiveContainer>
               <p className="mt-2 text-sm text-neutral-500">Each dot is one attack level. A dot below the dashed line at high PSNR means the watermark was lost with little visible damage, which is the weakness to report.</p>

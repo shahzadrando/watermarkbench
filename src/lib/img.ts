@@ -8,6 +8,12 @@ export const PAYLOAD: number[] = Array.from({ length: 32 }, (_, i) => (0xa5c30f9
 
 export const bitAccuracy = (bits: number[]) => bits.filter((b, i) => b === PAYLOAD[i]).length / PAYLOAD.length;
 
+// An attack can flip every bit (e.g. LSB under darkening); the watermark is still present, so score the inverted payload too.
+export function scoreBits(bits: number[]) {
+  const acc = bitAccuracy(bits);
+  return acc < 0.5 ? { bitAcc: 1 - acc, inverted: true } : { bitAcc: acc, inverted: false };
+}
+
 export function luma(im: Img): Float32Array {
   const y = new Float32Array(im.width * im.height);
   for (let i = 0, p = 0; i < y.length; i++, p += 4) y[i] = 0.299 * im.data[p] + 0.587 * im.data[p + 1] + 0.114 * im.data[p + 2];
